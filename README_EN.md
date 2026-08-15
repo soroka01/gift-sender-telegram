@@ -26,6 +26,7 @@ In addition to Telegram's current catalog, the panel includes known unlimited 50
 - current Telegram Gifts from `payments.GetStarGifts`;
 - nine removed unlimited bear gifts priced at 50 Stars;
 - release dates on removed-gift buttons and confirmation screens;
+- custom visual labels loaded from a public JSON configuration file;
 - sendability checks through `payments.CheckCanSendGift`;
 - sender visibility toggle for named or anonymous gifts;
 - separate recipient-upgrade permission;
@@ -180,6 +181,32 @@ One message is edited through the text input, confirmation, sending, and detaile
 The built-in catalog contains seasonal and temporary bear gifts released between December 31, 2025 and August 13, 2026. They are absent from the current `GetStarGifts` response, so their technical IDs and first-seen dates are stored locally.
 
 Telegram validates each ID again before payment. If a gift becomes disabled, the panel reports the refusal before requesting a payment form.
+
+### Custom Bear Labels
+
+Edit the public [`gift_descriptions.json`](gift_descriptions.json) file. Each key is a technical gift ID and each value is a short visual description:
+
+```json
+{
+  "6046178578163303744": "wearing dark glasses and a red scarf"
+}
+```
+
+Descriptions can contain up to 120 characters and appear on the selection button, text-input screen, confirmation, and final receipt. Whitespace is normalized and empty values are ignored. The file is reloaded on every `/gift`, so no restart is required after editing it.
+
+| Gift ID | Release date | Built-in name |
+| --- | --- | --- |
+| `5956217000635139069` | 2025-12-31 | New Year bear |
+| `5800655655995968830` | 2026-02-14 | Valentine's Day bear |
+| `5866352046986232958` | 2026-03-08 | International Women's Day bear |
+| `5893356958802511476` | 2026-03-17 | Saint Patrick's Day bear |
+| `5935895822435615975` | 2026-04-01 | April Fools' Day bear |
+| `5969796561943660080` | 2026-04-12 | Bear |
+| `6026193266406327981` | 2026-05-01 | Bear |
+| `5974210632977745012` | 2026-07-20 | Football bear |
+| `6046178578163303744` | 2026-08-13 | Bear |
+
+This JSON file is deliberately separate from the secret `config.py`, so completed descriptions can be safely published for every user.
 
 ## 📝 Logs
 

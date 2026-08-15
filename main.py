@@ -1,10 +1,11 @@
 import asyncio
 import html
+import json
 import logging
 import re
 import secrets
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -24,7 +25,9 @@ from config import ADMIN_IDS, API_HASH, API_ID, BOT_TOKEN, DEFAULT_HIDE_NAME, DE
 USERNAME_RE = re.compile(r"^@?[A-Za-z0-9_]{5,32}$")
 MAX_GIFTS_IN_KEYBOARD = 24
 MAX_GIFT_MESSAGE_LENGTH = 255
+MAX_GIFT_DESCRIPTION_LENGTH = 120
 LOG_PATH = Path(__file__).resolve().with_name("gift_sender.log")
+GIFT_DESCRIPTIONS_PATH = Path(__file__).resolve().with_name("gift_descriptions.json")
 logger = logging.getLogger("gift_sender")
 
 
@@ -63,6 +66,7 @@ class PendingGift:
     stars: int
     availability: str
     release_date: str | None
+    description: str | None
     upgrade_details: str
     hide_name: bool
     include_upgrade: bool
@@ -80,6 +84,7 @@ class GiftOption:
     upgrade_details: str
     release_date: date | None = None
     removed_from_store: bool = False
+    description: str | None = None
 
     @property
     def release_date_label(self) -> str | None:
@@ -88,8 +93,10 @@ class GiftOption:
     @property
     def button_details(self) -> str:
         if self.removed_from_store and self.release_date_label:
-            return self.release_date_label
-        return self.availability.replace("осталось ", "ост. ")
+            details = self.release_date_label
+        else:
+            details = self.availability.replace("осталось ", "ост. ")
+        return f"{details} · {self.description}" if self.description else details
 
 
 # Telegram removes these unlimited 50-Star bears from GetStarGifts after their
@@ -115,8 +122,9 @@ class PaymentVerificationRequired(Exception):
 
 
 class GiftService:
-    def __init__(self, client: TelegramClient) -> None:
+    def __init__(self, client: TelegramClient, descriptions_path: Path = GIFT_DESCRIPTIONS_PATH) -> None:
         self.client = client
+        self.descriptions_path = descriptions_path
 
     async def resolve_user(self, username: str) -> types.TypeInputPeer:
         return await self.client.get_input_entity(await self.client.get_entity(username.lstrip("@")))
@@ -131,7 +139,11 @@ class GiftService:
         gifts_by_id = {gift.id: gift for gift in current}
         for gift in REMOVED_UNLIMITED_GIFTS:
             gifts_by_id.setdefault(gift.id, gift)
-        return list(gifts_by_id.values())
+        descriptions = load_gift_descriptions(self.descriptions_path)
+        return [
+            replace(gift, description=descriptions.get(gift.id))
+            for gift in gifts_by_id.values()
+        ]
 
     async def check_can_send(self, gift_id: int) -> tuple[bool, str | None]:
         request = getattr(functions.payments, "CheckCanSendGiftRequest", None)
@@ -168,6 +180,34 @@ def load_config() -> Config:
     if message and len(message) > MAX_GIFT_MESSAGE_LENGTH:
         raise RuntimeError(f"GIFT_MESSAGE must be at most {MAX_GIFT_MESSAGE_LENGTH} characters.")
     return Config(BOT_TOKEN, int(API_ID), API_HASH, USER_SESSION or "user_account", admins, bool(DEFAULT_HIDE_NAME), bool(DEFAULT_INCLUDE_UPGRADE), message)
+
+
+def load_gift_descriptions(path: Path = GIFT_DESCRIPTIONS_PATH) -> dict[int, str]:
+    if not path.exists():
+        return {}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"Cannot read gift descriptions from {path.name}: {exc}") from exc
+    if not isinstance(raw, dict):
+        raise RuntimeError(f"{path.name} must contain a JSON object with gift IDs as keys.")
+
+    descriptions: dict[int, str] = {}
+    for raw_id, raw_description in raw.items():
+        try:
+            gift_id = int(raw_id)
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError(f"Invalid gift ID in {path.name}: {raw_id!r}") from exc
+        if not isinstance(raw_description, str):
+            raise RuntimeError(f"Description for gift {gift_id} must be a string.")
+        description = " ".join(raw_description.split())
+        if len(description) > MAX_GIFT_DESCRIPTION_LENGTH:
+            raise RuntimeError(
+                f"Description for gift {gift_id} exceeds {MAX_GIFT_DESCRIPTION_LENGTH} characters."
+            )
+        if description:
+            descriptions[gift_id] = description
+    return descriptions
 
 
 def is_admin(config: Config, update: Message | CallbackQuery) -> bool:
@@ -254,11 +294,13 @@ def message_preview(item: PendingGift, limit: int | None = None) -> str:
 def gift_details_text(item: PendingGift, message_limit: int | None = 120) -> str:
     custom_emoji_note = f" (Premium Emoji сохранено: {len(item.message_entities)})" if item.message_entities else ""
     release_date = f"Дата выхода: <b>{html.escape(item.release_date)}</b>\n" if item.release_date else ""
+    description = f"Описание: <b>{html.escape(item.description)}</b>\n" if item.description else ""
     return (
         f"Получатель: <b>{html.escape(item.target_username)}</b>\n"
         f"Подарок: <b>{html.escape(item.gift_title)}</b>\n"
         f"Стоимость: <b>{item.stars} Stars</b>\n"
         f"{release_date}"
+        f"{description}"
         f"Доступность: <b>{html.escape(item.availability)}</b>\n"
         f"Улучшение подарка: <b>{html.escape(item.upgrade_details)}</b>\n"
         f"Разрешить улучшение: <b>{'да' if item.include_upgrade else 'нет'}</b>\n"
@@ -273,10 +315,12 @@ def confirmation_text(item: PendingGift) -> str:
 
 
 def text_input_text(item: PendingGift) -> str:
+    description = f"\nОписание: <b>{html.escape(item.description)}</b>" if item.description else ""
     return (
         "<b>✍️ Текст для подарка</b>\n\n"
         f"Получатель: <b>{html.escape(item.target_username)}</b>\n"
-        f"Подарок: <b>{html.escape(item.gift_title)}</b> за <b>{item.stars} Stars</b>\n\n"
+        f"Подарок: <b>{html.escape(item.gift_title)}</b> за <b>{item.stars} Stars</b>"
+        f"{description}\n\n"
         f"Текущий текст: <b>{message_preview(item)}</b>\n\n"
         f"Пришли следующим сообщением новый текст (до {MAX_GIFT_MESSAGE_LENGTH} символов). "
         "Кастомные Premium Emoji сохранятся."
@@ -399,6 +443,7 @@ async def main() -> None:
             stars=gift.stars,
             availability=gift.availability,
             release_date=gift.release_date_label,
+            description=gift.description,
             upgrade_details=gift.upgrade_details,
             hide_name=config.default_hide_name,
             include_upgrade=config.default_include_upgrade,
@@ -406,8 +451,8 @@ async def main() -> None:
         )
         pending[token] = item
         logger.info(
-            "gift_prepared admin_id=%d target=%s gift_id=%d price=%d removed=%s hide_name=%s include_upgrade=%s",
-            query.from_user.id, target, gift_id, item.stars, gift.removed_from_store, item.hide_name, item.include_upgrade,
+            "gift_prepared admin_id=%d target=%s gift_id=%d price=%d removed=%s described=%s hide_name=%s include_upgrade=%s",
+            query.from_user.id, target, gift_id, item.stars, gift.removed_from_store, bool(item.description), item.hide_name, item.include_upgrade,
         )
         await query.answer()
         await show_confirmation(query, token, item)
