@@ -4,7 +4,7 @@
 
 🌐 **Language:** [Русский](README.md) · [English](README_EN.md)
 
-![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Python 3.14+](https://img.shields.io/badge/Python-3.14%2B-3776AB?logo=python&logoColor=white)
 ![Telethon](https://img.shields.io/badge/Telethon-user_session-0088CC?logo=telegram&logoColor=white)
 ![aiogram](https://img.shields.io/badge/aiogram-Telegram_bot-26A5E4?logo=telegram&logoColor=white)
 ![MIT License](https://img.shields.io/badge/License-MIT-2EA44F.svg)
@@ -61,7 +61,8 @@ A bot token cannot pay for these gifts. Bot API provides the interface, while St
 
 ## 📋 Requirements
 
-- Python 3.10 or newer;
+- Python 3.14 or newer (the latest 3.14.6 patch is recommended);
+- pip 26.1.2, setuptools 84.0.0, and wheel 0.48.0 (the launchers upgrade them automatically);
 - Windows for the included `.bat` launchers;
 - a Telegram user account with enough Stars;
 - an `api_id` and `api_hash` from [Telegram API development tools](https://my.telegram.org);
