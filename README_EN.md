@@ -184,11 +184,14 @@ Telegram validates each ID again before payment. If a gift becomes disabled, the
 
 ### Custom Bear Labels
 
-Edit the public [`gift_descriptions.json`](gift_descriptions.json) file. Each key is a technical gift ID and each value is a short visual description:
+Edit the public [`gift_descriptions.json`](gift_descriptions.json) file. Bears are ordered from newest to oldest and labeled with their exact Yekaterinburg release time (`UTC+5`), so there is no need to identify them by ID. Only fill in the `description` field:
 
 ```json
 {
-  "6046178578163303744": "wearing dark glasses and a red scarf"
+  "released_at": "13.08.2026 00:37",
+  "name": "Bear",
+  "gift_id": "6046178578163303744",
+  "description": "wearing dark glasses and a red scarf"
 }
 ```
 
@@ -206,7 +209,7 @@ Descriptions can contain up to 120 characters and appear on the selection button
 | `5974210632977745012` | 2026-07-20 | Football bear |
 | `6046178578163303744` | 2026-08-13 | Bear |
 
-This JSON file is deliberately separate from the secret `config.py`, so completed descriptions can be safely published for every user.
+The `released_at`, `name`, and `gift_id` fields should not be changed. This JSON file is deliberately separate from the secret `config.py`, so completed descriptions can be safely published for every user.
 
 ## 📝 Logs
 

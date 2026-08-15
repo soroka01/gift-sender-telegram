@@ -190,14 +190,33 @@ def load_gift_descriptions(path: Path = GIFT_DESCRIPTIONS_PATH) -> dict[int, str
     except (OSError, json.JSONDecodeError) as exc:
         raise RuntimeError(f"Cannot read gift descriptions from {path.name}: {exc}") from exc
     if not isinstance(raw, dict):
-        raise RuntimeError(f"{path.name} must contain a JSON object with gift IDs as keys.")
+        raise RuntimeError(f"{path.name} must contain a JSON object.")
+
+    if "gifts" in raw:
+        gifts = raw["gifts"]
+        if not isinstance(gifts, list):
+            raise RuntimeError(f"The gifts field in {path.name} must be a JSON array.")
+        entries = []
+        for index, gift in enumerate(gifts, start=1):
+            if not isinstance(gift, dict):
+                raise RuntimeError(f"Gift entry #{index} in {path.name} must be a JSON object.")
+            if "gift_id" not in gift:
+                raise RuntimeError(f"Gift entry #{index} in {path.name} has no gift_id.")
+            entries.append((gift["gift_id"], gift.get("description", "")))
+    else:
+        # Backward compatibility with the original {"gift_id": "description"} format.
+        entries = list(raw.items())
 
     descriptions: dict[int, str] = {}
-    for raw_id, raw_description in raw.items():
+    seen_ids: set[int] = set()
+    for raw_id, raw_description in entries:
         try:
             gift_id = int(raw_id)
         except (TypeError, ValueError) as exc:
             raise RuntimeError(f"Invalid gift ID in {path.name}: {raw_id!r}") from exc
+        if gift_id in seen_ids:
+            raise RuntimeError(f"Duplicate gift ID in {path.name}: {gift_id}")
+        seen_ids.add(gift_id)
         if not isinstance(raw_description, str):
             raise RuntimeError(f"Description for gift {gift_id} must be a string.")
         description = " ".join(raw_description.split())
