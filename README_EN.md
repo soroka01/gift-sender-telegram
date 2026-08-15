@@ -184,18 +184,18 @@ Telegram validates each ID again before payment. If a gift becomes disabled, the
 
 ### Custom Bear Labels
 
-Edit the public [`gift_descriptions.json`](gift_descriptions.json) file. Bears are ordered from newest to oldest and labeled with their exact Yekaterinburg release time (`UTC+5`), so there is no need to identify them by ID. Only fill in the `description` field:
+Edit the public [`gift_descriptions.json`](gift_descriptions.json) file. Bears are ordered from newest to oldest and labeled with their exact Yekaterinburg release time (`UTC+5`), so there is no need to identify them by ID. Use `name` for a short gift label and the optional `description` field for additional visual details:
 
 ```json
 {
   "released_at": "13.08.2026 00:37",
-  "name": "Bear",
+  "name": "Bear with a bomb",
   "gift_id": "6046178578163303744",
   "description": "wearing dark glasses and a red scarf"
 }
 ```
 
-Descriptions can contain up to 120 characters and appear on the selection button, text-input screen, confirmation, and final receipt. Whitespace is normalized and empty values are ignored. The file is reloaded on every `/gift`, so no restart is required after editing it.
+`name` appears on the selection button and becomes the displayed gift name. A non-empty `description` is additionally shown on the text-input screen, confirmation, and final receipt. Each field is limited to 120 characters and whitespace is normalized. The file is reloaded on every `/gift`, so no restart is required after editing it.
 
 | Gift ID | Release date | Built-in name |
 | --- | --- | --- |
@@ -209,7 +209,7 @@ Descriptions can contain up to 120 characters and appear on the selection button
 | `5974210632977745012` | 2026-07-20 | Football bear |
 | `6046178578163303744` | 2026-08-13 | Bear |
 
-The `released_at`, `name`, and `gift_id` fields should not be changed. This JSON file is deliberately separate from the secret `config.py`, so completed descriptions can be safely published for every user.
+The `released_at` and `gift_id` fields should not be changed. This JSON file is deliberately separate from the secret `config.py`, so completed names and descriptions can be safely published for every user.
 
 ## 📝 Logs
 

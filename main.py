@@ -93,10 +93,16 @@ class GiftOption:
     @property
     def button_details(self) -> str:
         if self.removed_from_store and self.release_date_label:
-            details = self.release_date_label
+            details = f"{self.release_date_label} · {self.title}"
         else:
             details = self.availability.replace("осталось ", "ост. ")
         return f"{details} · {self.description}" if self.description else details
+
+
+@dataclass(frozen=True)
+class GiftCustomization:
+    name: str | None = None
+    description: str | None = None
 
 
 # Telegram removes these unlimited 50-Star bears from GetStarGifts after their
@@ -139,9 +145,13 @@ class GiftService:
         gifts_by_id = {gift.id: gift for gift in current}
         for gift in REMOVED_UNLIMITED_GIFTS:
             gifts_by_id.setdefault(gift.id, gift)
-        descriptions = load_gift_descriptions(self.descriptions_path)
+        customizations = load_gift_customizations(self.descriptions_path)
         return [
-            replace(gift, description=descriptions.get(gift.id))
+            replace(
+                gift,
+                title=customizations[gift.id].name or gift.title,
+                description=customizations[gift.id].description,
+            ) if gift.id in customizations else gift
             for gift in gifts_by_id.values()
         ]
 
@@ -182,7 +192,7 @@ def load_config() -> Config:
     return Config(BOT_TOKEN, int(API_ID), API_HASH, USER_SESSION or "user_account", admins, bool(DEFAULT_HIDE_NAME), bool(DEFAULT_INCLUDE_UPGRADE), message)
 
 
-def load_gift_descriptions(path: Path = GIFT_DESCRIPTIONS_PATH) -> dict[int, str]:
+def load_gift_customizations(path: Path = GIFT_DESCRIPTIONS_PATH) -> dict[int, GiftCustomization]:
     if not path.exists():
         return {}
     try:
@@ -202,14 +212,14 @@ def load_gift_descriptions(path: Path = GIFT_DESCRIPTIONS_PATH) -> dict[int, str
                 raise RuntimeError(f"Gift entry #{index} in {path.name} must be a JSON object.")
             if "gift_id" not in gift:
                 raise RuntimeError(f"Gift entry #{index} in {path.name} has no gift_id.")
-            entries.append((gift["gift_id"], gift.get("description", "")))
+            entries.append((gift["gift_id"], gift.get("name"), gift.get("description", "")))
     else:
         # Backward compatibility with the original {"gift_id": "description"} format.
-        entries = list(raw.items())
+        entries = [(gift_id, None, description) for gift_id, description in raw.items()]
 
-    descriptions: dict[int, str] = {}
+    customizations: dict[int, GiftCustomization] = {}
     seen_ids: set[int] = set()
-    for raw_id, raw_description in entries:
+    for raw_id, raw_name, raw_description in entries:
         try:
             gift_id = int(raw_id)
         except (TypeError, ValueError) as exc:
@@ -217,16 +227,26 @@ def load_gift_descriptions(path: Path = GIFT_DESCRIPTIONS_PATH) -> dict[int, str
         if gift_id in seen_ids:
             raise RuntimeError(f"Duplicate gift ID in {path.name}: {gift_id}")
         seen_ids.add(gift_id)
+        if raw_name is not None and not isinstance(raw_name, str):
+            raise RuntimeError(f"Name for gift {gift_id} must be a string.")
         if not isinstance(raw_description, str):
             raise RuntimeError(f"Description for gift {gift_id} must be a string.")
+        name = " ".join(raw_name.split()) if raw_name else ""
         description = " ".join(raw_description.split())
+        if len(name) > MAX_GIFT_DESCRIPTION_LENGTH:
+            raise RuntimeError(
+                f"Name for gift {gift_id} exceeds {MAX_GIFT_DESCRIPTION_LENGTH} characters."
+            )
         if len(description) > MAX_GIFT_DESCRIPTION_LENGTH:
             raise RuntimeError(
                 f"Description for gift {gift_id} exceeds {MAX_GIFT_DESCRIPTION_LENGTH} characters."
             )
-        if description:
-            descriptions[gift_id] = description
-    return descriptions
+        if name or description:
+            customizations[gift_id] = GiftCustomization(
+                name=name or None,
+                description=description or None,
+            )
+    return customizations
 
 
 def is_admin(config: Config, update: Message | CallbackQuery) -> bool:
