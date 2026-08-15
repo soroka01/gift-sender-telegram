@@ -1,0 +1,16 @@
+config.py
+.env
+.env.*
+*.session
+*.session-journal
+*.session-shm
+*.session-wal
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.log
+*.log.*
+.idea/
+.vscode/
