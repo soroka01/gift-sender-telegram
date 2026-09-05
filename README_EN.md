@@ -1,82 +1,19 @@
-# 🎁 Telegram Gift Sender
+# Telegram Gift Sender
 
-> A private aiogram and Telethon control panel for sending current and removed unlimited Telegram gifts from a user account.
+[Русский](README.md) · [English](README_EN.md)
 
-🌐 **Language:** [Русский](README.md) · [English](README_EN.md)
+Private Telegram panel for selecting and sending gifts from a user account. Shows the recipient, price, message, and anonymity settings before payment. Stars are charged to the signed-in user account.
 
-![Python 3.14+](https://img.shields.io/badge/Python-3.14%2B-3776AB?logo=python&logoColor=white)
-![Telethon](https://img.shields.io/badge/Telethon-user_session-0088CC?logo=telegram&logoColor=white)
-![aiogram](https://img.shields.io/badge/aiogram-Telegram_bot-26A5E4?logo=telegram&logoColor=white)
-![MIT License](https://img.shields.io/badge/License-MIT-2EA44F.svg)
+## Requirements
 
-## ✨ Overview
-
-Telegram Gift Sender uses a separate Bot API bot as a private control panel and an authorized Telethon user session to pay for and send Telegram Gifts. Before any Stars are charged, the bot shows the recipient, gift, price, message, sender visibility, and upgrade setting.
-
-In addition to Telegram's current catalog, the panel includes known unlimited 50-Star bear gifts that have been removed from the storefront but are still accepted by the Telegram API. Each entry shows its release date, and `CheckCanSendGift` runs immediately before payment preparation.
-
-> [!WARNING]
-> Gifts are paid from the user account's real Stars balance. Add only your own Telegram IDs to `ADMIN_IDS`, protect the session file like a password, and review the final confirmation before sending.
-
-> [!NOTE]
-> This is an unofficial project and is not affiliated with Telegram. Server-side availability of removed gifts can change without a script update.
-
-## 🚀 Features
-
-- current Telegram Gifts from `payments.GetStarGifts`;
-- nine removed unlimited bear gifts priced at 50 Stars;
-- release dates on removed-gift buttons and confirmation screens;
-- custom visual labels loaded from a public JSON configuration file;
-- sendability checks through `payments.CheckCanSendGift`;
-- sender visibility toggle for named or anonymous gifts;
-- separate recipient-upgrade permission;
-- messages up to 255 characters;
-- Telegram Premium custom emoji preservation through `MessageEntityCustomEmoji`;
-- detailed final receipt with recipient, price, date, anonymity, text, and gift ID;
-- administrator-only commands and callback buttons;
-- rotating logs without message contents or credentials;
-- Windows launchers for setup, authorization, and startup.
-
-## 🏗️ How It Works
-
-```text
-Bot API control panel
-          │
-          ├── /gift @username
-          ├── gift and option selection
-          └── final payment confirmation
-          │
-          ▼
-authorized Telethon user session
-          ├── GetStarGifts + local removed-bear catalog
-          ├── CheckCanSendGift
-          ├── GetPaymentForm
-          └── SendStarsForm
-          │
-          ▼
-recipient receives the gift
-```
-
-A bot token cannot pay for these gifts. Bot API provides the interface, while Stars are charged from the authorized user account over MTProto.
-
-## 📋 Requirements
-
-- Python 3.14 or newer (the latest 3.14.6 patch is recommended);
-- pip 26.1.2, setuptools 84.0.0, and wheel 0.48.0 (the launchers upgrade them automatically);
+- Python 3.14 or newer;
 - Windows for the included `.bat` launchers;
 - a Telegram user account with enough Stars;
 - an `api_id` and `api_hash` from [Telegram API development tools](https://my.telegram.org);
 - a Telegram bot token from [@BotFather](https://t.me/BotFather);
 - the numeric Telegram ID of every administrator.
 
-Main dependencies:
-
-| Package | Purpose |
-| --- | --- |
-| `telethon` | User session, gift catalog, and MTProto payment flow |
-| `aiogram` | Private Bot API control panel and inline keyboard |
-
-## ⚙️ Quick Start
+## Quick start
 
 ### 1. Clone the repository
 
@@ -138,7 +75,17 @@ python login.py
 python main.py
 ```
 
-## 🔧 Configuration
+## How it works
+
+```mermaid
+flowchart TD
+    A["Telegram admin"] --> B["Gift + recipient"]
+    B["Gift + recipient"] --> C["Payment confirmation"]
+    C["Payment confirmation"] --> D["Telethon user account"]
+    D["Telethon user account"] --> E["Gift delivery"]
+```
+
+## Configuration
 
 ```python
 BOT_TOKEN = "PUT_TELEGRAM_BOT_TOKEN_HERE"
@@ -167,7 +114,7 @@ GIFT_MESSAGE = ""
 
 `GIFT_MESSAGE` has no Telegram entities. Enter the message through the bot interface when custom Premium Emoji are required.
 
-## 🤖 Sending Flow
+## Sending Flow
 
 1. Send `/gift @username`.
 2. Select a gift. Removed bears show a release date instead of remaining supply.
@@ -177,7 +124,7 @@ GIFT_MESSAGE = ""
 
 One message is edited through the text input, confirmation, sending, and detailed result states. Stars are charged only after the last button press.
 
-## 🧸 Removed Unlimited Gifts
+## Removed Unlimited Gifts
 
 The built-in catalog contains seasonal and temporary bear gifts released between December 31, 2025 and August 13, 2026. They are absent from the current `GetStarGifts` response, so their technical IDs and first-seen dates are stored locally.
 
@@ -212,7 +159,7 @@ Edit the public [`gift_descriptions.json`](gift_descriptions.json) file. Bears a
 
 The `released_at` and `gift_id` fields should not be changed. This JSON file is deliberately separate from the secret `config.py`, so completed names and descriptions can be safely published for every user.
 
-## 📝 Logs
+## Logs
 
 The technical log is written to `gift_sender.log` next to `main.py` and printed to the console at the same time.
 
@@ -225,7 +172,7 @@ The technical log is written to `gift_sender.log` next to `main.py` and printed 
 
 The log contains the administrator Telegram ID, recipient username, and gift ID. It never stores gift message contents, bot tokens, API hashes, session keys, or payment verification URLs.
 
-## 🔐 Security and Privacy
+## Security and Privacy
 
 - Never commit `config.py`, `*.session`, `*.session-journal`, `.venv`, or `*.log`.
 - A Telethon session grants access to the user account and must be protected like a password.
@@ -235,7 +182,7 @@ The log contains the administrator Telegram ID, recipient username, and gift ID.
 - Revoke bot tokens or API credentials immediately after a leak.
 - Use the project only with your own account and in accordance with Telegram's rules.
 
-## ⚠️ Limitations
+## Limitations
 
 - Telegram can disable a removed gift at any time.
 - Removed bear IDs are updated manually when new gifts appear.
@@ -243,27 +190,14 @@ The log contains the administrator Telegram ID, recipient username, and gift ID.
 - Payment verification may require opening a separate URL; the script never retries a charge automatically.
 - A complete end-to-end test requires a real account, Stars, and a recipient.
 
-## 🧪 Validation and Troubleshooting
+## License
 
-Syntax can be checked without Telegram credentials:
+[MIT](LICENSE).
 
-```powershell
-python -m py_compile main.py login.py config.example.py
-```
+## Support
 
-| Symptom | What to check |
-| --- | --- |
-| `database is locked` | Stop the second process using the same Telethon session |
-| The bot replies with access denied | Add your numeric user ID to `ADMIN_IDS` |
-| A gift is unavailable | Telegram disabled the ID or restricted the recipient |
-| Premium Emoji became plain | Enter the message through the updated bot UI and restart the bot |
-| Payment did not finish | Open the verification URL and start the send flow again |
-| Unknown failure | Inspect `gift_sender.log` |
-
-## 📄 License
-
-This project is distributed under the [MIT License](LICENSE).
+Feel free to [fork this repository](https://github.com/soroka01/gift-sender-telegram/fork) and adapt it. If it helped you, leave a [Star](https://github.com/soroka01/gift-sender-telegram) so I can see it was useful.
 
 ---
 
-🎁 Always verify the recipient and options — Stars are charged from a real user account.
+with love ❤️
