@@ -20,7 +20,8 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from telethon import TelegramClient, functions, types
 from telethon.errors import RPCError
 
-from config import ADMIN_IDS, API_HASH, API_ID, BOT_TOKEN, DEFAULT_HIDE_NAME, DEFAULT_INCLUDE_UPGRADE, GIFT_MESSAGE, USER_SESSION
+import config as user_config
+from config_compat import config_value
 
 USERNAME_RE = re.compile(r"^@?[A-Za-z0-9_]{5,32}$")
 MAX_GIFTS_IN_KEYBOARD = 24
@@ -105,13 +106,14 @@ class GiftCustomization:
     description: str | None = None
 
 
-# Telegram removes these unlimited 50-Star bears from GetStarGifts after their
+# Telegram removes these unlimited 50-Star gifts from GetStarGifts after their
 # short storefront window, but CheckCanSendGift and InputInvoiceStarGift still
 # accept their IDs. Dates are the first public availability dates in local time
 # (Asia/Yekaterinburg).
 REMOVED_UNLIMITED_GIFTS = (
     GiftOption(5956217000635139069, "Новогодний мишка", "🧸", 50, "без лимита (снят с витрины)", "не поддерживается", date(2025, 12, 31), True),
     GiftOption(5800655655995968830, "Мишка на 14 февраля", "🧸", 50, "без лимита (снят с витрины)", "не поддерживается", date(2026, 2, 14), True),
+    GiftOption(5801108895304779062, "Сердечко «I LOVE U»", "❤️", 50, "без лимита (снят с витрины)", "не поддерживается", date(2026, 2, 14), True),
     GiftOption(5866352046986232958, "Мишка на 8 марта", "🧸", 50, "без лимита (снят с витрины)", "не поддерживается", date(2026, 3, 8), True),
     GiftOption(5893356958802511476, "Мишка на День святого Патрика", "🧸", 50, "без лимита (снят с витрины)", "не поддерживается", date(2026, 3, 17), True),
     GiftOption(5935895822435615975, "Мишка на 1 апреля", "🧸", 50, "без лимита (снят с витрины)", "не поддерживается", date(2026, 4, 1), True),
@@ -179,17 +181,29 @@ class GiftService:
 
 def load_config() -> Config:
     try:
-        admins = {int(value) for value in ADMIN_IDS}
+        admins = {int(value) for value in getattr(user_config, "ADMIN_IDS", [])}
     except (TypeError, ValueError) as exc:
         raise RuntimeError("ADMIN_IDS in config.py must contain numeric Telegram user IDs.") from exc
-    if not BOT_TOKEN or not API_HASH or not API_ID:
+    bot_token = config_value(user_config, "BOT_TOKEN", "")
+    api_id = config_value(user_config, "API_ID", 0)
+    api_hash = config_value(user_config, "API_HASH", "")
+    if not bot_token or not api_hash or not api_id:
         raise RuntimeError("Fill BOT_TOKEN, API_ID and API_HASH in config.py before starting.")
     if not admins:
         raise RuntimeError("ADMIN_IDS must not be empty: otherwise anyone could spend your Stars.")
-    message = (GIFT_MESSAGE or "").strip() or None
+    message = (config_value(user_config, "GIFT_MESSAGE", "") or "").strip() or None
     if message and len(message) > MAX_GIFT_MESSAGE_LENGTH:
         raise RuntimeError(f"GIFT_MESSAGE must be at most {MAX_GIFT_MESSAGE_LENGTH} characters.")
-    return Config(BOT_TOKEN, int(API_ID), API_HASH, USER_SESSION or "user_account", admins, bool(DEFAULT_HIDE_NAME), bool(DEFAULT_INCLUDE_UPGRADE), message)
+    return Config(
+        bot_token=bot_token,
+        api_id=int(api_id),
+        api_hash=api_hash,
+        user_session=config_value(user_config, "USER_SESSION", "user_account") or "user_account",
+        admin_ids=admins,
+        default_hide_name=bool(config_value(user_config, "DEFAULT_HIDE_NAME", True)),
+        default_include_upgrade=bool(config_value(user_config, "DEFAULT_INCLUDE_UPGRADE", False)),
+        gift_message=message,
+    )
 
 
 def load_gift_customizations(path: Path = GIFT_DESCRIPTIONS_PATH) -> dict[int, GiftCustomization]:
