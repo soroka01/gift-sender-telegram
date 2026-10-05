@@ -1,16 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Config and secrets
 config.py
 .env
 .env.*
+
+# Telegram sessions
 *.session
-*.session-journal
-*.session-shm
-*.session-wal
-.venv/
-venv/
-env/
-__pycache__/
-*.pyc
+*.session-*
+
+# Logs
 *.log
 *.log.*
+
+# Editors
 .idea/
 .vscode/
